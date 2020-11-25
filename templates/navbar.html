@@ -1,0 +1,15 @@
+{% set navigation_bar = [
+    (url_for("index"), 'index', 'Home'),
+    (url_for("data_sources"), 'data-sources', 'Data Sources')
+] -%}
+
+<header class="masthead mb-auto">
+    <div class="inner">
+        <h3 class="masthead-brand"><strong>COVID-19 Cases in Jordan</strong></h3>
+        <nav class="nav nav-masthead justify-content-center">
+            {% for href, id, caption in navigation_bar %}
+                <a class="nav-link {% if id == active_page %}active{% endif %}" href="{{ href|e }}">{{ caption|e }}</a>
+            {% endfor %}
+        </nav>
+    </div>
+</header>
