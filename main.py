@@ -10,7 +10,7 @@ from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 
 app = Flask(__name__)
 
@@ -120,6 +120,11 @@ def parse_update():
         update_dict[location] = num_cases
 
     return update_dict
+
+
+@app.route('/get/admin-regions-map-layer')
+def get_admin_regions_map_layer():
+    return send_from_directory('static', 'bin/JOR_adm.zip')
 
 
 @app.route('/data-sources')

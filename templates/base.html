@@ -13,12 +13,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
             crossorigin="anonymous"></script>
 
-    <!-- LeafletJS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    {% block head_scripts %}
+    {% endblock %}
 
     <!-- Custom styles -->
-    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
 </head>
 
 <body>

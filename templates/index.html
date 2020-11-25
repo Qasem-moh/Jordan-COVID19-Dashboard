@@ -1,6 +1,14 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard{% endblock %}
-{% set active_page = "index" %}
+
+{% block head_scripts %}
+    <!-- LeafletJS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
+    <script type="text/javascript" src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/shp.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/catiline.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/leaflet.shpfile.js') }}"></script>
+{% endblock %}
 
 {% block outer_content %}
     <h1><strong>COVID-19 Cases in Jordan</strong></h1>
@@ -44,7 +52,7 @@
         });
 
         // LeafletJS
-        var mymap = L.map('mapid').setView([51.505, -0.09], 13);
+        var m = L.map('mapid').setView([31.25, 36.5], 7);
 
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
             maxZoom: 18,
@@ -54,6 +62,22 @@
             id: 'mapbox/streets-v11',
             tileSize: 512,
             zoomOffset: -1
-        }).addTo(mymap);
+        }).addTo(m);
+
+        var shpfile = new L.Shapefile("{{ url_for('static', filename='bin/JOR_adm.zip') }}", {
+            onEachFeature: function (feature, layer) {
+                if (feature.properties) {
+                    layer.bindPopup(Object.keys(feature.properties).map(function (k) {
+                        return k + ": " + feature.properties[k];
+                    }).join("<br />"), {
+                        maxHeight: 200
+                    });
+                }
+            }
+        });
+        shpfile.addTo(m);
+        shpfile.once("data:loaded", function () {
+            console.log("finished loaded shapefile");
+        });
     </script>
 {% endblock %}
