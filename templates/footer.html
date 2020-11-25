@@ -1,5 +1,16 @@
-<footer class="mastfoot mt-auto">
-    <div class="inner">
-        <p>Developed by <strong>Matthew Turi</strong> for <a href="https://www.rit.edu/study/geographic-information-systems-minor" target="_blank">IGME-386</a></p>
+<footer class="container py-5">
+    <div class="row">
+        <div class="col-12 col-md">
+            <small class="d-block mb-3 text-muted">Developed by <strong>Matthew Turi</strong> for <a href="https://www.rit.edu/study/geographic-information-systems-minor"
+                                                                                                     target="_blank">IGME-386</a></small>
+        </div>
+        <div class="col-6 col-md">
+            <h5><strong>Sitemap</strong></h5>
+            <ul class="list-unstyled text-small">
+                <li><a class="text-muted" href="{{ url_for('index') }}">Dashboard</a></li>
+                <li><a class="text-muted" href="#">About</a></li>
+                <li><a class="text-muted" href="{{ url_for('data_sources') }}">Data Sources</a></li>
+            </ul>
+        </div>
     </div>
 </footer>

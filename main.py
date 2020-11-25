@@ -16,6 +16,7 @@ app = Flask(__name__)
 
 ROOT_URL = r"https://corona.moh.gov.jo"
 BASE_PATH = r"/en/MediaCenter"
+ALL_URLS = []
 
 
 # TODO Implement scheduler for gathering links every 24h
@@ -63,7 +64,7 @@ def gather_links():
                         break
 
                     link_path = link["href"]
-                    all_urls.append([link_path, date_time_obj])
+                    all_urls.append([link_path[-4:], date_time_obj])
 
             page_number += 1
 
@@ -85,7 +86,7 @@ def parse_update():
         return None
 
     # Get webpage
-    webpage = requests.get("{0}{1}?page={2}".format(ROOT_URL, BASE_PATH, page_id), verify=False)
+    webpage = requests.get("{0}{1}/{2}".format(ROOT_URL, BASE_PATH, page_id), verify=False)
 
     # Parse to BS4
     soup = BeautifulSoup(webpage.content, 'html.parser')
@@ -108,6 +109,9 @@ def parse_update():
         if len(row.lstrip().rstrip()) == 0:
             break
 
+        # Attempt to fix some formatting errors where the space after the first number isn't present
+        row = re.sub(r'(?<=\d)(?=[^\d\s])|(?<=[^\d\s])(?=\d)', ' ', row)
+
         pieces = row[2:].split(" ")
         num_cases = int(pieces[0].replace(",", ""))
         location = pieces[3].replace(",", "").replace(".", "")
@@ -125,9 +129,13 @@ def data_sources():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', all_urls=ALL_URLS)
 
 
 if __name__ == "__main__":
+    # Get links before initial application start
+    print("[*] Gathering initial links before application start")
+    ALL_URLS = gather_links()
+
     # Only for debugging while developing
     app.run(host="0.0.0.0", debug=True, port=5000)
