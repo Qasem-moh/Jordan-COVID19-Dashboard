@@ -126,6 +126,7 @@
         let shpFile;
         let legend;
         let selectedDateCasesData;
+        let selectedDateCasesDataProportional = {};
         let classes;
         let usePopulationProportion;
 
@@ -162,17 +163,45 @@
          * Applies the appropriate styling to the passed region based on the number of COVID-19 cases
          */
         function style(feature) {
-            // Get the number of COVID-19 cases for selected date
-            feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
-
+            let value;
+            // Check if we need to adjust the dataset to be proportional to the population
+            if (usePopulationProportion) {
+                value = selectedDateCasesDataProportional[feature.properties['RegionName']];
+            } else {
+                value = selectedDateCasesData[feature.properties['RegionName']];
+            }
             return {
-                fillColor: getColor(feature.properties["Number of Cases"]),
+                fillColor: getColor(value),
                 weight: 2,
                 opacity: 1,
                 color: 'white',
                 dashArray: '3',
                 fillOpacity: 0.7
             };
+        }
+
+        function generateClasses(dataset) {
+            let parsedDateset = {};
+            $.each(dataset, function (key, value) {
+                parsedDateset[key] = parseFloat(value);
+            });
+
+            // Generate geostats object for dataset
+            let series = new geostats(Object.values(parsedDateset));
+            console.log(parsedDateset);
+
+            // Determine the classification type
+            let classifierType = $("#dataClassificationMethodSelect").val();
+            if (classifierType === "jenks") {
+                classes = series.getClassJenks(NUM_CLASSES);
+            } else if (classifierType === "eqinterval") {
+                classes = series.getClassEqInterval(NUM_CLASSES);
+            } else if (classifierType === "quantile") {
+                classes = series.getClassQuantile(NUM_CLASSES);
+            } else {
+                // Default to jenks if something erroneous was entered
+                classes = series.getClassJenks(NUM_CLASSES);
+            }
         }
 
         /**
@@ -201,41 +230,43 @@
             }).done(function (data) {
                 selectedDateCasesData = data;
 
-                $("#selectedDate").text($("#viewDateSelect option:selected").text());
-
-                // Generate geostats object for dataset
-                let series = new geostats(Object.values(selectedDateCasesData));
-
-                // Determine the classification type
-                let classifierType = $("#dataClassificationMethodSelect").val();
-                if (classifierType === "jenks") {
-                    classes = series.getClassJenks(NUM_CLASSES);
-                } else if (classifierType === "eqinterval") {
-                    classes = series.getClassEqInterval(NUM_CLASSES);
-                } else if (classifierType === "quantile") {
-                    classes = series.getClassQuantile(NUM_CLASSES);
+                if (usePopulationProportion) {
+                    shp("{{ url_for('static', filename='bin/jordan_regions.shp.zip') }}").then(function (geojson) {
+                        for (let i = 0; i < geojson['features'].length; i++) {
+                            let feature = geojson['features'][i];
+                            selectedDateCasesDataProportional[feature.properties['RegionName']] = ((selectedDateCasesData[feature.properties['RegionName']] / parseInt(feature.properties['Population'])) * 100000).toFixed(1);
+                        }
+                    }).then(function () {
+                        generateClasses(selectedDateCasesDataProportional);
+                    });
                 } else {
-                    // Default to jenks if something erroneous was entered
-                    classes = series.getClassJenks(NUM_CLASSES);
+                    generateClasses(selectedDateCasesData);
                 }
+
+                $("#selectedDate").text($("#viewDateSelect option:selected").text());
 
                 // Initialize new shapefile layer
                 shpFile = new L.Shapefile("{{ url_for('static', filename='bin/jordan_regions.shp.zip') }}", {
+                    style: style,
                     onEachFeature: function (feature, layer) {
                         // Get the number of COVID-19 cases for selected date
                         feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
 
+                        // Check if we need to adjust the dataset to be proportional to the population
+                        if (usePopulationProportion) {
+                            feature.properties['Number of Cases per 100,000'] = selectedDateCasesDataProportional[feature.properties['RegionName']];
+                        }
+
                         if (feature.properties) {
                             let popupString = Object.keys(feature.properties).map(function (k) {
-                                return k + ": " + feature.properties[k];
+                                return `<strong>${k}:</strong> ${feature.properties[k]}`;
                             }).join("<br />");
 
                             layer.bindPopup(popupString, {
                                 maxHeight: 200
                             });
                         }
-                    },
-                    style: style
+                    }
                 });
 
                 // Add layer to map
@@ -244,30 +275,36 @@
                 // Shapefile finished loading
                 shpFile.once("data:loaded", function () {
                     console.log("Shapefile loaded");
+
+                    // Create legend
+                    legend = L.control({position: 'bottomright'});
+                    legend.onAdd = function () {
+                        let legendDiv = L.DomUtil.create('div', 'info legend');
+
+                        if (usePopulationProportion) {
+                            legendDiv.innerHTML += "<strong>Number of Cases per 100,000</strong><br style='margin-bottom: 5px'>";
+                        } else {
+                            legendDiv.innerHTML += "<strong>Number of Cases</strong><br style='margin-bottom: 5px'>";
+                        }
+
+                        // Loop through all of the classes and populate the legend with them
+                        for (let i = 0; i < classes.length; i++) {
+                            legendDiv.innerHTML +=
+                                '<i style="background:' + getColor(classes[i]) + '"></i> ' +
+                                classes[i] + (classes[i + 1] ? '&ndash;' + classes[i + 1] + '<br>' : '+');
+                        }
+
+                        return legendDiv;
+                    };
+
+                    legend.addTo(map);
+
                     // Re-enable all input
                     $("#viewDateSelect").prop("disabled", false);
                     $("#toggleLocalPopulationRatio").prop("disabled", false);
                     $("#dataClassificationMethodSelect").prop("disabled", false);
                     $("#numBreakClasses").prop("disabled", false);
                 });
-
-                // Create legend
-                legend = L.control({position: 'bottomright'});
-                legend.onAdd = function () {
-                    let legendDiv = L.DomUtil.create('div', 'info legend');
-                    legendDiv.innerHTML += "<strong>Number of Cases</strong><br style='margin-bottom: 5px'>";
-
-                    // Loop through all of the classes and populate the legend with them
-                    for (let i = 0; i < classes.length; i++) {
-                        legendDiv.innerHTML +=
-                            '<i style="background:' + getColor(classes[i]) + '"></i> ' +
-                            classes[i] + (classes[i + 1] ? '&ndash;' + classes[i + 1] + '<br>' : '+');
-                    }
-
-                    return legendDiv;
-                };
-
-                legend.addTo(map);
             });
         }
 
