@@ -8,6 +8,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/shp.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/catiline.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/leaflet.shpfile.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/geostats.min.js') }}"></script>
 {% endblock %}
 
 {% block outer_content %}
@@ -40,6 +41,15 @@
                         Show number of cases proportional to local population
                     </label>
                 </div>
+                <br>
+                <div class="form-group">
+                    <label for="dataClassificationMethodSelect">Select data classification method</label>
+                    <select class="form-control" id="dataClassificationMethodSelect">
+                        <option value="jenks" selected>Natural Breaks (Jenks)</option>
+                        <option value="eqinterval">Equal Interval</option>
+                        <option value="quantile">Quantile</option>
+                    </select>
+                </div>
                 <hr>
                 <a href="#" class="btn btn-success">Download data as CSV</a>
             </div>
@@ -55,18 +65,22 @@
 
         // On page load events
         $(document).ready(function () {
-            selectedDateChangeHandler();
+            mapOptionChangedHandler();
         });
 
         // "Select a date to view" changed event handler
         $("#viewDateSelect").change(function () {
-            selectedDateChangeHandler();
+            mapOptionChangedHandler();
         });
 
         // "Show number of cases proportional to local population" changed event handler
         $("#toggleLocalPopulationRatio").change(function () {
             console.log($(this).is(':checked'))
         });
+
+        $("#dataClassificationMethodSelect").change(function () {
+            mapOptionChangedHandler();
+        })
 
         //-------------------------------------------------------------------------------
         // LeafletJS
@@ -93,22 +107,41 @@
          * Determines the appropriate hex color code for the different
          */
         function getColor(val) {
-            if (val > 1000) {
+            // Generate geostats object for dataset
+            let series = new geostats(Object.values(selectedDateCasesData));
+
+            // Determine the classification type
+            const NUM_CLASSES = 7;
+            let classifierType = $("#dataClassificationMethodSelect").val();
+            let classes;
+
+            if (classifierType === "jenks") {
+                classes = series.getClassJenks(NUM_CLASSES);
+            } else if (classifierType === "eqinterval") {
+                classes = series.getClassEqInterval(NUM_CLASSES);
+            } else if (classifierType === "quantile") {
+                classes = series.getClassQuantile(NUM_CLASSES);
+            }
+
+            // Apply the color grading to the different classes
+            if (val > classes[7]) {
                 return "#800026";
-            } else if (val > 500) {
+            } else if (val > classes[6]) {
                 return "#BD0026";
-            } else if (val > 200) {
+            } else if (val > classes[5]) {
                 return "#E31A1C";
-            } else if (val > 100) {
+            } else if (val > classes[4]) {
                 return "#FC4E2A";
-            } else if (val > 50) {
+            } else if (val > classes[3]) {
                 return "#FD8D3C";
-            } else if (val > 20) {
+            } else if (val > classes[2]) {
                 return "#FEB24C";
-            } else if (val > 10) {
+            } else if (val > classes[1]) {
                 return "#FED976";
-            } else {
+            } else if (val > classes[0]) {
                 return "#FFEDA0";
+            } else {
+                return "#fff5e9";
             }
         }
 
@@ -132,7 +165,7 @@
         /**
          * Handler for view data selector change
          */
-        function selectedDateChangeHandler() {
+        function mapOptionChangedHandler() {
             // Try to remove existing map layer
             try {
                 map.removeLayer(shpFile);
@@ -145,6 +178,7 @@
                 alert("Error getting data for specified date! Please try again later.");
             }).done(function (data) {
                 selectedDateCasesData = data;
+
                 $("#selectedDate").text($("#viewDateSelect option:selected").text());
 
                 // Initialize new shapefile layer
