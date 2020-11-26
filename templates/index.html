@@ -183,13 +183,12 @@
         function generateClasses(dataset) {
             let parsedDateset = {};
             $.each(dataset, function (key, value) {
-                if (Number.isNaN(parseFloat(value))) {
-                    parsedDateset[key] = 0;
-                } else {
+                if (!Number.isNaN(parseFloat(value))) {
                     parsedDateset[key] = parseFloat(value);
                 }
             });
 
+            // Enforce limit on number of classes for smaller datasets
             if (Object.keys(parsedDateset).length < NUM_CLASSES) {
                 NUM_CLASSES = Object.keys(parsedDateset).length - 1;
             }
