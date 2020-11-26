@@ -5,10 +5,12 @@ Date:       11/19/2020
 Assignment: Final Project - Jordan MIH COVID-19 parser
 """
 
+import atexit
 import re
 from datetime import datetime
 
 import requests
+from apscheduler.schedulers.background import BackgroundScheduler
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, send_from_directory
 
@@ -19,9 +21,6 @@ BASE_PATH = r"/en/MediaCenter"
 ALL_URLS = []
 
 
-# TODO Implement scheduler for gathering links every 24h
-# https://stackoverflow.com/questions/21214270/how-to-schedule-a-function-to-run-every-hour-on-flask
-
 def gather_links():
     """
     Gather all the links to the COVID-19 updates from as many pages as possible. This function will not get links earlier
@@ -29,6 +28,7 @@ def gather_links():
 
     :return: The link to the update pages and a datetime object for the day the update refers to
     """
+    print("[*] Gathering links...")
     all_urls = []
     page_number = 1
 
@@ -68,6 +68,7 @@ def gather_links():
 
             page_number += 1
 
+    print("[*] Finished gathering links!")
     return all_urls
 
 
@@ -137,10 +138,18 @@ def index():
     return render_template('index.html', all_urls=ALL_URLS)
 
 
+# Configure scheduler to automatically run the gather_links() function every 24 hours
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=gather_links, trigger="interval", seconds=86400)
+scheduler.start()
+
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
+
 if __name__ == "__main__":
     # Get links before initial application start
-    print("[*] Gathering initial links before application start")
+    print("[*] Application is starting. Check http://127.0.0.1:5000 in ~30 seconds")
     ALL_URLS = gather_links()
 
     # Only for debugging while developing
-    app.run(host="0.0.0.0", debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=False, port=5000)
