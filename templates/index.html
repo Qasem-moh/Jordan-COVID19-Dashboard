@@ -9,6 +9,23 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/catiline.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/leaflet.shpfile.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/geostats.min.js') }}"></script>
+
+    <style type="text/css">
+        .legend {
+            background-color: white;
+            padding: 10px;
+            line-height: 18px;
+            color: #555;
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
 {% endblock %}
 
 {% block outer_content %}
@@ -25,7 +42,7 @@
             <div class="col-md-6">
                 <!-- View date selector form -->
                 <div class="form-group">
-                    <label for="viewDateSelect">Select a date to view</label>
+                    <label for="viewDateSelect"><strong>Select a date to view</strong></label>
                     <select class="form-control" id="viewDateSelect">
                         {% for url in all_urls %}
                             <option value="{{ url[0] }}">{{ url[1].strftime('%B %d %Y') }}</option>
@@ -34,21 +51,23 @@
                 </div>
             </div>
             <div class="col-md-6" style="border-left: 1px solid lightgray;  padding-left: 10px">
+                <div class="form-group">
+                    <label for="dataClassificationMethodSelect"><strong>Select data classification method</strong></label>
+                    <select class="form-control" id="dataClassificationMethodSelect">
+                        <option value="jenks" selected>Natural Breaks (Jenks)</option>
+                        <option value="eqinterval">Equal Interval</option>
+                        <option value="quantile">Quantile</option>
+                    </select>
+                </div>
+
+                <br>
+
                 <!-- Toggle controls -->
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" value="" id="toggleLocalPopulationRatio">
                     <label class="form-check-label" for="toggleLocalPopulationRatio">
                         Show number of cases proportional to local population
                     </label>
-                </div>
-                <br>
-                <div class="form-group">
-                    <label for="dataClassificationMethodSelect">Select data classification method</label>
-                    <select class="form-control" id="dataClassificationMethodSelect">
-                        <option value="jenks" selected>Natural Breaks (Jenks)</option>
-                        <option value="eqinterval">Equal Interval</option>
-                        <option value="quantile">Quantile</option>
-                    </select>
                 </div>
                 <hr>
                 <a href="#" class="btn btn-success">Download data as CSV</a>
@@ -75,9 +94,11 @@
 
         // "Show number of cases proportional to local population" changed event handler
         $("#toggleLocalPopulationRatio").change(function () {
+            mapOptionChangedHandler();
             console.log($(this).is(':checked'))
         });
 
+        // "Select data classification method" changed event handler
         $("#dataClassificationMethodSelect").change(function () {
             mapOptionChangedHandler();
         })
@@ -86,10 +107,13 @@
         // LeafletJS
         //-------------------------------------------------------------------------------
 
-        // Initialize map
-        let map = L.map('map').setView([31.25, 36.5], 7);
+        const NUM_CLASSES = 7;
         let shpFile;
         let selectedDateCasesData;
+        let classes;
+
+        // Initialize map
+        let map = L.map('map').setView([31.25, 36.5], 7);
 
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
             maxZoom: 18,
@@ -104,41 +128,25 @@
         //-------------------------------------------------------------------------------
 
         /**
-         * Determines the appropriate hex color code for the different
+         * Determines the appropriate hex color code for the different data classes
          */
         function getColor(val) {
-            // Generate geostats object for dataset
-            let series = new geostats(Object.values(selectedDateCasesData));
-
-            // Determine the classification type
-            const NUM_CLASSES = 7;
-            let classifierType = $("#dataClassificationMethodSelect").val();
-            let classes;
-
-            if (classifierType === "jenks") {
-                classes = series.getClassJenks(NUM_CLASSES);
-            } else if (classifierType === "eqinterval") {
-                classes = series.getClassEqInterval(NUM_CLASSES);
-            } else if (classifierType === "quantile") {
-                classes = series.getClassQuantile(NUM_CLASSES);
-            }
-
             // Apply the color grading to the different classes
-            if (val > classes[7]) {
+            if (val >= classes[7]) {
                 return "#800026";
-            } else if (val > classes[6]) {
+            } else if (val >= classes[6]) {
                 return "#BD0026";
-            } else if (val > classes[5]) {
+            } else if (val >= classes[5]) {
                 return "#E31A1C";
-            } else if (val > classes[4]) {
+            } else if (val >= classes[4]) {
                 return "#FC4E2A";
-            } else if (val > classes[3]) {
+            } else if (val >= classes[3]) {
                 return "#FD8D3C";
-            } else if (val > classes[2]) {
+            } else if (val >= classes[2]) {
                 return "#FEB24C";
-            } else if (val > classes[1]) {
+            } else if (val >= classes[1]) {
                 return "#FED976";
-            } else if (val > classes[0]) {
+            } else if (val >= classes[0]) {
                 return "#FFEDA0";
             } else {
                 return "#fff5e9";
@@ -181,6 +189,22 @@
 
                 $("#selectedDate").text($("#viewDateSelect option:selected").text());
 
+                // Generate geostats object for dataset
+                let series = new geostats(Object.values(selectedDateCasesData));
+
+                // Determine the classification type
+                let classifierType = $("#dataClassificationMethodSelect").val();
+                if (classifierType === "jenks") {
+                    classes = series.getClassJenks(NUM_CLASSES);
+                } else if (classifierType === "eqinterval") {
+                    classes = series.getClassEqInterval(NUM_CLASSES);
+                } else if (classifierType === "quantile") {
+                    classes = series.getClassQuantile(NUM_CLASSES);
+                } else {
+                    // Default to jenks if something erroneous was entered
+                    classes = series.getClassJenks(NUM_CLASSES);
+                }
+
                 // Initialize new shapefile layer
                 shpFile = new L.Shapefile("{{ url_for('static', filename='bin/jordan_regions.shp.zip') }}", {
                     onEachFeature: function (feature, layer) {
@@ -207,6 +231,24 @@
                 shpFile.once("data:loaded", function () {
                     console.log("Shapefile loaded");
                 });
+
+                // Create legend
+                let legend = L.control({position: 'bottomright'});
+                legend.onAdd = function () {
+                    let legendDiv = L.DomUtil.create('div', 'info legend');
+                    legendDiv.innerHTML += "<strong>Number of Cases</strong><br style='margin-bottom: 5px'>";
+
+                    // Loop through all of the classes and populate the legend with them
+                    for (let i = 0; i < classes.length; i++) {
+                        legendDiv.innerHTML +=
+                            '<i style="background:' + getColor(classes[i]) + '"></i> ' +
+                            classes[i] + (classes[i + 1] ? '&ndash;' + classes[i + 1] + '<br>' : '+');
+                    }
+
+                    return legendDiv;
+                };
+
+                legend.addTo(map);
             });
         }
     </script>

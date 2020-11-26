@@ -3,10 +3,24 @@
 
 {% block inner_content %}
     <h1 class="cover-heading">Data Sources</h1>
-    <ul>
-        <li><a href="https://corona.moh.gov.jo/en/MediaCenter">Jordan - Ministry of Health</a></li>
-        <li><a href="http://dosweb.dos.gov.jo/DataBank/Population_Estimares/PopulationEstimatesbyLocality.pdf">Jordan - Department of Statistics</a></li>
-        <li><a href="http://biogeo.ucdavis.edu/data/diva/adm/JOR_adm.zip">UC Davis - Department of Environmental Science and Policy</a>
+    <ul style="text-align: left!important;">
+        <li>
+            <a href="https://corona.moh.gov.jo/en/MediaCenter">Jordan - Ministry of Health</a>
+            <ul>
+                <li>Provided COVID-19 daily cases data</li>
+            </ul>
+        </li>
+        <li>
+            <a href="http://dosweb.dos.gov.jo/DataBank/Population_Estimares/PopulationEstimatesbyLocality.pdf">Jordan - Department of Statistics</a>
+            <ul>
+                <li>Provided population information</li>
+            </ul>
+        </li>
+        <li>
+            <a href="http://biogeo.ucdavis.edu/data/diva/adm/JOR_adm.zip">UC Davis - Department of Environmental Science and Policy</a>
+            <ul>
+                <li>Provided governorate region polygons</li>
+            </ul>
         </li>
     </ul>
 {% endblock %}
