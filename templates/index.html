@@ -70,7 +70,7 @@
                     </label>
                 </div>
                 <hr>
-                <a href="#" class="btn btn-success">Download data as CSV</a>
+                <a href="#" onclick="downloadCSV()" class="btn btn-success">Download data as CSV</a>
             </div>
         </div>
     </form>
@@ -250,6 +250,24 @@
 
                 legend.addTo(map);
             });
+        }
+
+        /**
+         * Generates a CSV file for the selected date's dateset
+         */
+        function downloadCSV() {
+            let csv = 'Date,Region,NumCases\n';
+            let timestamp = Date.parse($("#viewDateSelect option:selected").text());
+            for (const item in selectedDateCasesData) {
+                csv += `${timestamp},${item},${selectedDateCasesData[item]}\n`;
+            }
+
+            let date = new Date(timestamp);
+            let hiddenElement = document.createElement('a');
+            hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            hiddenElement.target = '_blank';
+            hiddenElement.download = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-covid-19-cases.csv`;
+            hiddenElement.click();
         }
     </script>
 {% endblock %}
