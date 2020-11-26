@@ -18,6 +18,7 @@
 
     <hr>
     <h5><strong>Map Controls</strong></h5>
+
     <form>
         <div class="row">
             <div class="col-md-6">
@@ -39,6 +40,8 @@
                         Show number of cases proportional to local population
                     </label>
                 </div>
+                <hr>
+                <a href="#" class="btn btn-success">Download data as CSV</a>
             </div>
         </div>
     </form>
@@ -70,8 +73,9 @@
         //-------------------------------------------------------------------------------
 
         // Initialize map
-        var map = L.map('map').setView([31.25, 36.5], 7);
-        var shpFile;
+        let map = L.map('map').setView([31.25, 36.5], 7);
+        let shpFile;
+        let selectedDateCasesData;
 
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
             maxZoom: 18,
@@ -88,7 +92,7 @@
         /**
          * Determines the appropriate hex color code for the different
          */
-        function getColor(val, proportionalScaling = false) {
+        function getColor(val) {
             if (val > 1000) {
                 return "#800026";
             } else if (val > 500) {
@@ -112,9 +116,11 @@
          * Applies the appropriate styling to the passed region based on the number of COVID-19 cases
          */
         function style(feature) {
-            {#console.log(feature);#}
+            // Get the number of COVID-19 cases for selected date
+            feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
+
             return {
-                fillColor: getColor(feature.properties.density),
+                fillColor: getColor(feature.properties["Number of Cases"]),
                 weight: 2,
                 opacity: 1,
                 color: 'white',
@@ -138,18 +144,19 @@
             jQuery.get("{{ url_for('parse_update') }}", 'page_id=' + $("#viewDateSelect").val()).fail(function () {
                 alert("Error getting data for specified date! Please try again later.");
             }).done(function (data) {
+                selectedDateCasesData = data;
                 $("#selectedDate").text($("#viewDateSelect option:selected").text());
 
                 // Initialize new shapefile layer
                 shpFile = new L.Shapefile("{{ url_for('static', filename='bin/jordan_regions.shp.zip') }}", {
                     onEachFeature: function (feature, layer) {
-                        let num_cases = data[feature.properties['RegionName']];
-                        console.log(feature.properties['RegionName'], data[feature.properties['RegionName']]);
+                        // Get the number of COVID-19 cases for selected date
+                        feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
 
                         if (feature.properties) {
                             let popupString = Object.keys(feature.properties).map(function (k) {
                                 return k + ": " + feature.properties[k];
-                            }).join("<br />") + "<br />Number of cases: " + num_cases;
+                            }).join("<br />");
 
                             layer.bindPopup(popupString, {
                                 maxHeight: 200
