@@ -183,12 +183,15 @@
         function generateClasses(dataset) {
             let parsedDateset = {};
             $.each(dataset, function (key, value) {
-                parsedDateset[key] = parseFloat(value);
+                if (Number.isNaN(parseFloat(value))) {
+                    parsedDateset[key] = 0;
+                } else {
+                    parsedDateset[key] = parseFloat(value);
+                }
             });
 
             // Generate geostats object for dataset
             let series = new geostats(Object.values(parsedDateset));
-            console.log(parsedDateset);
 
             // Determine the classification type
             let classifierType = $("#dataClassificationMethodSelect").val();
@@ -250,11 +253,19 @@
                     style: style,
                     onEachFeature: function (feature, layer) {
                         // Get the number of COVID-19 cases for selected date
-                        feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
+                        if (Number.isNaN(parseFloat(selectedDateCasesData[feature.properties['RegionName']]))) {
+                            feature.properties['Number of Cases'] = 0;
+                        } else {
+                            feature.properties['Number of Cases'] = selectedDateCasesData[feature.properties['RegionName']];
+                        }
 
                         // Check if we need to adjust the dataset to be proportional to the population
                         if (usePopulationProportion) {
-                            feature.properties['Number of Cases per 100,000'] = selectedDateCasesDataProportional[feature.properties['RegionName']];
+                            if (Number.isNaN(parseFloat(selectedDateCasesDataProportional[feature.properties['RegionName']]))) {
+                                feature.properties['Number of Cases per 100,000'] = 0;
+                            } else {
+                                feature.properties['Number of Cases per 100,000'] = selectedDateCasesDataProportional[feature.properties['RegionName']];
+                            }
                         }
 
                         if (feature.properties) {
@@ -289,9 +300,12 @@
 
                         // Loop through all of the classes and populate the legend with them
                         for (let i = 0; i < classes.length; i++) {
-                            legendDiv.innerHTML +=
-                                '<i style="background:' + getColor(classes[i]) + '"></i> ' +
-                                classes[i] + (classes[i + 1] ? '&ndash;' + classes[i + 1] + '<br>' : '+');
+                            legendDiv.innerHTML += `<i style="background:${getColor(classes[i])}"></i> ${classes[i]}`;
+                            if (i === classes.length - 1) {
+                                legendDiv.innerHTML += '+';
+                            } else {
+                                legendDiv.innerHTML += ` &ndash; ${classes[i + 1]}<br>`;
+                            }
                         }
 
                         return legendDiv;
@@ -312,7 +326,7 @@
          * Generates a CSV file for the selected date's dateset
          */
         function downloadCSV() {
-            let csv = 'Date,Region,NumCases\n';
+            let csv = 'Timestamp,Region,NumCases\n';
             let timestamp = Date.parse($("#viewDateSelect option:selected").text());
             for (const item in selectedDateCasesData) {
                 csv += `${timestamp},${item},${selectedDateCasesData[item]}\n`;
