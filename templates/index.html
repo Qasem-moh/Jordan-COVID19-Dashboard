@@ -51,23 +51,34 @@
                 </div>
             </div>
             <div class="col-md-6" style="border-left: 1px solid lightgray;  padding-left: 10px">
-                <div class="form-group">
-                    <label for="dataClassificationMethodSelect"><strong>Select data classification method</strong></label>
-                    <select class="form-control" id="dataClassificationMethodSelect">
-                        <option value="jenks" selected>Natural Breaks (Jenks)</option>
-                        <option value="eqinterval">Equal Interval</option>
-                        <option value="quantile">Quantile</option>
-                    </select>
-                </div>
-
-                <br>
-
                 <!-- Toggle controls -->
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" value="" id="toggleLocalPopulationRatio">
                     <label class="form-check-label" for="toggleLocalPopulationRatio">
                         Show number of cases proportional to local population
                     </label>
+                </div>
+                <br>
+                <p>
+                    <a class="btn btn-primary" data-toggle="collapse" href="#advancedOptions" role="button" aria-expanded="false" aria-controls="advancedOptions">
+                        Advanced Options
+                    </a>
+                </p>
+                <div class="collapse" id="advancedOptions">
+                    <div class="card card-body">
+                        <div class="form-group">
+                            <label for="dataClassificationMethodSelect"><strong>Select data classification method</strong></label>
+                            <select class="form-control" id="dataClassificationMethodSelect">
+                                <option value="jenks" selected>Natural Breaks (Jenks)</option>
+                                <option value="eqinterval">Equal Interval</option>
+                                <option value="quantile">Quantile</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="numBreakClasses"><strong>Number of Classes</strong></label>
+                            <input type="number" class="form-control" id="numBreakClasses" aria-describedby="numBreakClasses" value="7" min="2" max="12">
+                        </div>
+                    </div>
                 </div>
                 <hr>
                 <a href="#" onclick="downloadCSV()" class="btn btn-success">Download data as CSV</a>
@@ -95,22 +106,28 @@
         // "Show number of cases proportional to local population" changed event handler
         $("#toggleLocalPopulationRatio").change(function () {
             mapOptionChangedHandler();
-            console.log($(this).is(':checked'))
         });
 
         // "Select data classification method" changed event handler
         $("#dataClassificationMethodSelect").change(function () {
             mapOptionChangedHandler();
-        })
+        });
+
+        // "Number of Classes" changed event handler
+        $("#numBreakClasses").change(function () {
+            mapOptionChangedHandler();
+        });
 
         //-------------------------------------------------------------------------------
         // LeafletJS
         //-------------------------------------------------------------------------------
 
-        const NUM_CLASSES = 7;
+        let NUM_CLASSES;
         let shpFile;
+        let legend;
         let selectedDateCasesData;
         let classes;
+        let usePopulationProportion;
 
         // Initialize map
         let map = L.map('map').setView([31.25, 36.5], 7);
@@ -131,25 +148,13 @@
          * Determines the appropriate hex color code for the different data classes
          */
         function getColor(val) {
+            let colors = generateColorSteps();
+
             // Apply the color grading to the different classes
-            if (val >= classes[7]) {
-                return "#800026";
-            } else if (val >= classes[6]) {
-                return "#BD0026";
-            } else if (val >= classes[5]) {
-                return "#E31A1C";
-            } else if (val >= classes[4]) {
-                return "#FC4E2A";
-            } else if (val >= classes[3]) {
-                return "#FD8D3C";
-            } else if (val >= classes[2]) {
-                return "#FEB24C";
-            } else if (val >= classes[1]) {
-                return "#FED976";
-            } else if (val >= classes[0]) {
-                return "#FFEDA0";
-            } else {
-                return "#fff5e9";
+            for (let i = classes.length - 1; i >= 0; i--) {
+                if (val >= classes[i]) {
+                    return colors[i];
+                }
             }
         }
 
@@ -174,12 +179,21 @@
          * Handler for view data selector change
          */
         function mapOptionChangedHandler() {
+            // Disable all input
+            $("#viewDateSelect").attr("disabled", "disabled");
+            $("#toggleLocalPopulationRatio").attr("disabled", "disabled");
+            $("#dataClassificationMethodSelect").attr("disabled", "disabled");
+            $("#numBreakClasses").attr("disabled", "disabled");
+
             // Try to remove existing map layer
             try {
                 map.removeLayer(shpFile);
+                map.removeControl(legend);
             } catch (e) {
-                console.log("Unable to remove shapefile layer. It may have already been removed or there was an error")
             }
+
+            NUM_CLASSES = $("#numBreakClasses").val() - 1;
+            usePopulationProportion = $("#toggleLocalPopulationRatio").is(':checked');
 
             // Get the case data for the selected date
             jQuery.get("{{ url_for('parse_update') }}", 'page_id=' + $("#viewDateSelect").val()).fail(function () {
@@ -230,10 +244,15 @@
                 // Shapefile finished loading
                 shpFile.once("data:loaded", function () {
                     console.log("Shapefile loaded");
+                    // Re-enable all input
+                    $("#viewDateSelect").prop("disabled", false);
+                    $("#toggleLocalPopulationRatio").prop("disabled", false);
+                    $("#dataClassificationMethodSelect").prop("disabled", false);
+                    $("#numBreakClasses").prop("disabled", false);
                 });
 
                 // Create legend
-                let legend = L.control({position: 'bottomright'});
+                legend = L.control({position: 'bottomright'});
                 legend.onAdd = function () {
                     let legendDiv = L.DomUtil.create('div', 'info legend');
                     legendDiv.innerHTML += "<strong>Number of Cases</strong><br style='margin-bottom: 5px'>";
@@ -268,6 +287,57 @@
             hiddenElement.target = '_blank';
             hiddenElement.download = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-covid-19-cases.csv`;
             hiddenElement.click();
+        }
+    </script>
+
+    <script>
+        /**
+         * This code was adapted from Neil McCallion at https://codepen.io/njmcode/pen/axoyD
+         */
+        // Converts a #ffffff hex string into an [r,g,b] array
+        function hex2rgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : null;
+        }
+
+        // Inverse of the above
+        function rgb2hex(rgb) {
+            return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
+        }
+
+        // Interpolates two [r,g,b] colors and returns an [r,g,b] of the result
+        // Taken from the awesome ROT.js roguelike dev library at
+        // https://github.com/ondras/rot.js
+        function interpolateColor(color1, color2, factor) {
+            if (arguments.length < 3) {
+                factor = 0.5;
+            }
+
+            let result = color1.slice();
+
+            for (let i = 0; i < 3; i++) {
+                result[i] = Math.round(result[i] + factor * (color2[i] - color1[i]));
+            }
+
+            return result;
+        }
+
+        function generateColorSteps() {
+            let startColor = hex2rgb("#fff5e9"), endColor = hex2rgb("#800026");
+            let factorStep = 1 / (NUM_CLASSES + 1);
+            let steps = []
+            for (let i = 0; i < NUM_CLASSES + 1; i++) {
+                let interpolatedColor = interpolateColor(startColor, endColor, factorStep * i),
+                    hexColor = rgb2hex(interpolatedColor);
+
+                steps.push(hexColor);
+            }
+
+            return steps;
         }
     </script>
 {% endblock %}
