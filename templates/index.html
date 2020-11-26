@@ -31,7 +31,15 @@
                     </select>
                 </div>
             </div>
-            <div class="col-md-6" style="border-left: 1px solid lightgray;  padding-left: 10px"></div>
+            <div class="col-md-6" style="border-left: 1px solid lightgray;  padding-left: 10px">
+                <!-- Toggle controls -->
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="toggleLocalPopulationRatio">
+                    <label class="form-check-label" for="toggleLocalPopulationRatio">
+                        Show number of cases proportional to local population
+                    </label>
+                </div>
+            </div>
         </div>
     </form>
 {% endblock %}
@@ -51,6 +59,42 @@
             });
         });
 
+        $("#toggleLocalPopulationRatio").change(function () {
+            console.log($(this).is(':checked'))
+        });
+
+        function getColor(d) {
+            if (d > 1000) {
+                return "#800026";
+            } else if (d > 500) {
+                return "#BD0026";
+            } else if (d > 200) {
+                return "#E31A1C";
+            } else if (d > 100) {
+                return "#FC4E2A";
+            } else if (d > 50) {
+                return "#FD8D3C";
+            } else if (d > 20) {
+                return "#FEB24C";
+            } else if (d > 10) {
+                return "#FED976";
+            } else {
+                return "#FFEDA0";
+            }
+        }
+
+        function style(feature) {
+            console.log(feature);
+            return {
+                fillColor: getColor(feature.properties.density),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+        }
+
         // LeafletJS
         var m = L.map('mapid').setView([31.25, 36.5], 7);
 
@@ -64,7 +108,7 @@
             zoomOffset: -1
         }).addTo(m);
 
-        var shpfile = new L.Shapefile("{{ url_for('static', filename='bin/JOR_adm.zip') }}", {
+        var shpfile = new L.Shapefile("{{ url_for('static', filename='bin/jordan_regions.shp.zip') }}", {
             onEachFeature: function (feature, layer) {
                 if (feature.properties) {
                     layer.bindPopup(Object.keys(feature.properties).map(function (k) {
@@ -73,11 +117,12 @@
                         maxHeight: 200
                     });
                 }
-            }
+            },
+            style: style
         });
         shpfile.addTo(m);
         shpfile.once("data:loaded", function () {
-            console.log("finished loaded shapefile");
+            console.log("Shapefile loaded");
         });
     </script>
 {% endblock %}

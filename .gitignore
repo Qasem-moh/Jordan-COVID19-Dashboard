@@ -3,7 +3,6 @@
 *.dbf
 *.prj
 !wgs_84.prj
-*.shp*
 *.shx
 
 output

@@ -114,7 +114,7 @@ def parse_update():
 
         pieces = row[2:].split(" ")
         num_cases = int(pieces[0].replace(",", ""))
-        location = pieces[3].replace(",", "").replace(".", "")
+        location = pieces[3].replace(",", "").replace(".", "").replace("`", "").replace("'", "")
 
         # Handle entries that have additional locality specified in line
         update_dict[location] = num_cases
@@ -124,7 +124,7 @@ def parse_update():
 
 @app.route('/get/admin-regions-map-layer')
 def get_admin_regions_map_layer():
-    return send_from_directory('static', 'bin/JOR_adm.zip')
+    return send_from_directory('static', 'bin/jordan_regions.shp.zip')
 
 
 @app.route('/data-sources')
