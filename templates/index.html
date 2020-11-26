@@ -301,13 +301,15 @@
                             legendDiv.innerHTML += "<strong>Number of Cases</strong><br style='margin-bottom: 5px'>";
                         }
 
+                        legendDiv.innerHTML += `<i style="background:white; border: 1px solid lightgray"></i> 0<hr>`;
+
                         // Loop through all of the classes and populate the legend with them
                         for (let i = 0; i < classes.length; i++) {
-                            legendDiv.innerHTML += `<i style="background:${getColor(classes[i])}"></i> ${classes[i]}`;
+                            legendDiv.innerHTML += `<i style="background:${getColor(classes[i])}"></i> ${classes[i].toFixed(1)}`;
                             if (i === classes.length - 1) {
                                 legendDiv.innerHTML += '+';
                             } else {
-                                legendDiv.innerHTML += ` &ndash; ${classes[i + 1]}<br>`;
+                                legendDiv.innerHTML += ` &ndash; ${classes[i + 1].toFixed(1)}<br>`;
                             }
                         }
 
