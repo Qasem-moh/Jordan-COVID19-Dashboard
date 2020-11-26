@@ -190,11 +190,16 @@
                 }
             });
 
+            if (Object.keys(parsedDateset).length < NUM_CLASSES) {
+                NUM_CLASSES = Object.keys(parsedDateset).length - 1;
+            }
+
             // Generate geostats object for dataset
             let series = new geostats(Object.values(parsedDateset));
 
             // Determine the classification type
             let classifierType = $("#dataClassificationMethodSelect").val();
+            console.log(series);
             if (classifierType === "jenks") {
                 classes = series.getClassJenks(NUM_CLASSES);
             } else if (classifierType === "eqinterval") {
@@ -212,7 +217,7 @@
          */
         function mapOptionChangedHandler() {
             // Disable all input
-            $("#viewDateSelect").attr("disabled", "disabled");
+            //$("#viewDateSelect").attr("disabled", "disabled");
             $("#toggleLocalPopulationRatio").attr("disabled", "disabled");
             $("#dataClassificationMethodSelect").attr("disabled", "disabled");
             $("#numBreakClasses").attr("disabled", "disabled");
@@ -299,6 +304,7 @@
                         }
 
                         // Loop through all of the classes and populate the legend with them
+                        console.log(classes);
                         for (let i = 0; i < classes.length; i++) {
                             legendDiv.innerHTML += `<i style="background:${getColor(classes[i])}"></i> ${classes[i]}`;
                             if (i === classes.length - 1) {
