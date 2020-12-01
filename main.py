@@ -152,4 +152,4 @@ if __name__ == "__main__":
     ALL_URLS = gather_links()
 
     # Only for debugging while developing
-    app.run(host="0.0.0.0", debug=False, port=80)
+    app.run(host="0.0.0.0", debug=False, port=5000)
