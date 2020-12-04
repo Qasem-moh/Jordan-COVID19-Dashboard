@@ -12,13 +12,17 @@ from datetime import datetime
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request, send_from_directory, abort
 
 app = Flask(__name__)
 
 ROOT_URL = r"https://corona.moh.gov.jo"
 BASE_PATH = r"/en/MediaCenter"
 ALL_URLS = []
+
+
+def scheduled_update():
+    ALL_URLS[0] = gather_links()
 
 
 def gather_links():
@@ -79,48 +83,52 @@ def parse_update():
 
     :return: A dict of the region names and their cases count, or None if the update is older than 8/25
     """
-    page_id = request.args.get('page_id')
-    # Check that this is a page more recent than 8/25, which is when the posting format was standardized
-    # 1304 is the page ID number
-    if int(page_id) < 1304:
-        print("Unsupported update version. Skipping!")
-        return None
+    try:
+        page_id = request.args.get('page_id')
+        # Check that this is a page more recent than 8/25, which is when the posting format was standardized
+        # 1304 is the page ID number
+        if int(page_id) < 1304:
+            print("Unsupported update version. Skipping!")
+            return None
 
-    # Get webpage
-    webpage = requests.get("{0}{1}/{2}".format(ROOT_URL, BASE_PATH, page_id), verify=False)
+        # Get webpage
+        webpage = requests.get("{0}{1}/{2}".format(ROOT_URL, BASE_PATH, page_id), verify=False)
 
-    # Parse to BS4
-    soup = BeautifulSoup(webpage.content, 'html.parser')
-    document_content = soup.find("div", class_="col-xs-12 innertexts").find("p")
+        # Parse to BS4
+        soup = BeautifulSoup(webpage.content, 'html.parser')
+        document_content = soup.find("div", class_="col-xs-12 innertexts").find("p")
 
-    update_dict = {}
-    started_content_block = False
+        update_dict = {}
+        started_content_block = False
 
-    # Iterate through all lines from the content body
-    for row in document_content.text.splitlines():
-        # Ignore rows up to the first row containing "Internal Cases"
-        if "Internal Cases" in row:
-            started_content_block = True
-            continue
-        else:
-            if not started_content_block:
+        # Iterate through all lines from the content body
+        for row in document_content.text.splitlines():
+            # Ignore rows up to the first row containing "Internal Cases"
+            if "Internal Cases" in row:
+                started_content_block = True
                 continue
+            else:
+                if not started_content_block:
+                    continue
 
-        # Reached the end of the internal cases content block
-        if len(row.lstrip().rstrip()) == 0:
-            break
+            # Reached the end of the internal cases content block
+            if len(row.lstrip().rstrip()) == 0:
+                break
 
-        # Attempt to fix some formatting errors where the space after the first number isn't present
-        row = re.sub(r'(?<=\d)(?=[^\d\s])|(?<=[^\d\s])(?=\d)', ' ', row)
+            # Attempt to fix some formatting errors where the space after the first number isn't present
+            row = re.sub(r'(?<=\d)(?=[^\d\s])|(?<=[^\d\s])(?=\d)', ' ', row)
 
-        pieces = row[2:].split(" ")
-        num_cases = int(pieces[0].replace(",", ""))
-        location = pieces[3].replace(",", "").replace(".", "").replace("`", "").replace("'", "")
+            pieces = row[2:].split(" ")
+            num_cases = int(pieces[0].replace(",", ""))
+            location = pieces[3].replace(",", "").replace(".", "").replace("`", "").replace("'", "")
 
-        # Handle entries that have additional locality specified in line
-        update_dict[location] = num_cases
+            # Handle entries that have additional locality specified in line
+            update_dict[location] = num_cases
 
-    return update_dict
+        return update_dict
+    except:
+        print("Unable to parse source webpage contents. Aborting request!")
+        abort(500)
 
 
 @app.route('/get/admin-regions-map-layer')
@@ -135,7 +143,7 @@ def data_sources():
 
 @app.route('/')
 def index():
-    return render_template('index.html', all_urls=ALL_URLS)
+    return render_template('index.html', all_urls=ALL_URLS[0])
 
 
 # Configure scheduler to automatically run the gather_links() function every 24 hours
@@ -149,7 +157,7 @@ atexit.register(lambda: scheduler.shutdown())
 if __name__ == "__main__":
     # Get links before initial application start
     print("[*] Application is starting. Check http://127.0.0.1:5000 in ~30 seconds")
-    ALL_URLS = gather_links()
+    ALL_URLS.append(gather_links())
 
     # Only for debugging while developing
     app.run(host="0.0.0.0", debug=False, port=5000)
