@@ -2,9 +2,10 @@
 *.cpg
 *.dbf
 *.prj
-!wgs_84.prj
 *.shx
-
+*.pdf
+*.zip
+!static/bin/jordan_regions.shp.zip
 output
 
 # Created by .ignore support plugin (hsz.mobi)
