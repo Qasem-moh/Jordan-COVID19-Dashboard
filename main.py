@@ -148,7 +148,7 @@ def index():
 
 # Configure scheduler to automatically run the gather_links() function every 24 hours
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=gather_links, trigger="interval", seconds=86400)
+scheduler.add_job(func=scheduled_update, trigger="interval", seconds=86400)
 scheduler.start()
 
 # Shut down the scheduler when exiting the app
